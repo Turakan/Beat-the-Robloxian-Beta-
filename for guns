@@ -1,0 +1,79 @@
+-- 📦 Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+-- 📡 Remotes
+local reloadRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Reload")
+local gunRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GunHit")
+
+-- 🔫 รายชื่อปืนทั้งหมด
+local gunNames = {
+    "Assault Rifle", "Auto Shotgun", "BB Gun", "Battle Rifle", "Blunder Buss", "Bow",
+    "Classic Chaingun", "Classic Paintball Gun", "Classic Pistol", "Classic Rocket Launcher",
+    "Classic Shotgun", "Classic Sniper Rifle", "DMR", "Darkheart", "Donderbus",
+    "Dual Flintlocks", "Enforcer Pistol", "Golden Auto Shotgun", "Golden Minigun",
+    "Hand Cannon", "Hunting Rifle", "Hyperlaser", "Jimmy's Seven-Shooter", "Luger",
+    "Mauser C96", "Minigun", "Pistol", "Pwnage Pistol", "Pwnage Shotgun", "Railgun",
+    "Randy's Shotgun", "Red Hyperlaser", "Revolver", "SMG", "Shotgun", "Slingshot",
+    "Sniper Rifle", "Sten Gun", "Suppressor Minigun", "Tactical Assault Rifle",
+    "Tactical Pistol", "Tactical SMG", "Tactical Shotgun", "The Weedwhacker",
+    "Thumper", "Tommy Gun", "Yellow Snowball"
+}
+
+-- ✅ ฟังก์ชันเช็กว่าปืนอยู่ในลิสต์
+local function isValidWeapon(name)
+    for _, validName in ipairs(gunNames) do
+        if name == validName then
+            return true
+        end
+    end
+    return false
+end
+
+-- 🔍 ฟังก์ชันหาปืนจาก Backpack หรือ Character
+local function findGun(name)
+    return player.Backpack:FindFirstChild(name) or player.Character:FindFirstChild(name)
+end
+
+-- ✅ รอ Character และ Backpack โหลดก่อนเริ่ม
+while not player.Character or not player:FindFirstChild("Backpack") do
+    task.wait()
+end
+
+-- 🔁 รีโหลดทุกปืนอัตโนมัติ
+spawn(function()
+    while true do
+        for _, container in ipairs({player.Backpack, player.Character}) do
+            for _, tool in ipairs(container:GetChildren()) do
+                if tool:IsA("Tool") and isValidWeapon(tool.Name) then
+                    reloadRemote:FireServer(tool)
+                    print("✅ Reloaded:", tool.Name)
+                end
+            end
+        end
+        task.wait(1) -- เว้น 1 วิ
+    end
+end)
+
+-- 🔫 ยิงใส่มอนสเตอร์อัตโนมัติที่มี "Head"
+spawn(function()
+    while true do
+        for _, monster in ipairs(workspace:GetChildren()) do
+            if monster:IsA("Model") and monster ~= player.Character and monster:FindFirstChild("Head") then
+                for _, gunName in ipairs(gunNames) do
+                    local gun = findGun(gunName)
+                    if gun then
+                        local args = {
+                            [1] = gun,
+                            [2] = monster.Head,
+                            [3] = 1
+                        }
+                        gunRemote:FireServer(unpack(args))
+                    end
+                end
+            end
+        end
+        task.wait(0.05) -- หน่วงเล็กน้อยเพื่อไม่ให้เกมค้าง
+    end
+end)
